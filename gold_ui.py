@@ -17,7 +17,7 @@ OPENAI_API_KEY = st.secrets['OPENAI_API_KEY']
 correct_password = st.secrets['PASSWORD']
 
 index_name = "goldragai"
-embeddings = OpenAIEmbeddings(model='text-embedding-3-small', openai_api_key=PINECONE_API_KEY)
+embeddings = OpenAIEmbeddings(model='text-embedding-3-small', openai_api_key=OPENAI_API_KEY)
 use_serverless = True 
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
