@@ -8,5 +8,6 @@ streamlit
 googleapis-common-protos
 protoc-gen-openapiv2 
 grpcio
+grpcio-status
 pymupdf
 protobuf==5.26.1
