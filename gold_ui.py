@@ -54,30 +54,30 @@ def setupEnvironment():
 def vectorizeFile(up_files):
 
   # path to an example text file
-  for uf in up_files:
-    with st.spinner("Indexing documents... this might take a while⏳"):
-      with tempfile.TemporaryDirectory() as tmpdir:
-        for uploaded_file in uploaded_files:
-            file_name = uploaded_file.name
-            file_content = uploaded_file.read()
-            st.write("Filename: ", file_name)
-            with open(os.path.join(tmpdir, file_name), "wb") as file:
-                file.write(file_content)
-                
-        loader = DirectoryLoader(tmpdir, glob="**/*.pdf", loader_cls=PyMuPDFLoader) 
-        documents = loader.load()
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-        docs = text_splitter.split_documents(documents)
 
-        if index_name in pc.list_indexes().names(): 
-          vectorstore.add_documents(docs)
-        else:
-          vectorstore_from_docs = PineconeVectorStore.from_documents(
-              docs,
-              index_name=index_name,
-              embedding=embeddings
-          )
-        st.success("Ingested File!")
+  with st.spinner("Indexing documents... this might take a while⏳"):
+    with tempfile.TemporaryDirectory() as tmpdir:
+      for uploaded_file in up_files:
+          file_name = uploaded_file.name
+          file_content = uploaded_file.read()
+          st.write("Filename: ", file_name)
+          with open(os.path.join(tmpdir, file_name), "wb") as file:
+              file.write(file_content)
+              
+      loader = DirectoryLoader(tmpdir, glob="**/*.pdf", loader_cls=PyMuPDFLoader) 
+      documents = loader.load()
+      text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+      docs = text_splitter.split_documents(documents)
+
+      if index_name in pc.list_indexes().names(): 
+        vectorstore.add_documents(docs)
+      else:
+        vectorstore_from_docs = PineconeVectorStore.from_documents(
+            docs,
+            index_name=index_name,
+            embedding=embeddings
+        )
+      st.success("Ingested File! ")
     
 
 def render_header():
