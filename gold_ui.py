@@ -3,13 +3,16 @@ import streamlit as st
 import tempfile
 from langchain_pinecone import PineconeVectorStore
 from pinecone.grpc import PineconeGRPC as Pinecone
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.document_loaders import TextLoader, PyMuPDFLoader, DirectoryLoader
 from langchain_text_splitters import CharacterTextSplitter
 from pinecone import ServerlessSpec, PodSpec
 from streamlit import session_state
+from langchain.chains import RetrievalQA , RetrievalQAWithSourcesChain
 import time 
 
+##########################
+#--- Pinecone, Langchain, Openai 
 
 PINECONE_API_KEY = st.secrets['PINECONE_API_KEY']
 PINECONE_ENVIRONMENT = st.secrets['PINECONE_ENVIRONMENT']
@@ -21,12 +24,72 @@ embeddings = OpenAIEmbeddings(model='text-embedding-3-small', openai_api_key=OPE
 use_serverless = True 
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
+##########################
+
+##########################
+# -- UI Streamlit code
+st.set_page_config(layout="wide")
+leftCol, rightCol = st.columns(2)
+##########################
 
 
+
+##########################
+# -- Chat UI
+def showChatUi():
+  with rightCol:
+    st.title("Chat With GOLD AI")
+
+    # Set OpenAI API key from Streamlit secrets
+    # client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"]) 
+
+
+    # Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # Accept user input
+    if prompt := st.chat_input("What is up?"):
+      
+        # query = f"please summery of given text."
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Display user message in chat message container
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            
+        with st.chat_message("assistant"):
+          with st.spinner("Bot is Typing...."):
+            # qu = vectorstore.similarity_search(query, k=1)
+            # st.write(qu[0].page_content)
+            llm = ChatOpenAI(  
+                openai_api_key=OPENAI_API_KEY,  
+                model_name='gpt-3.5-turbo',  
+                temperature=0.5  
+            ) 
+
+            qa_with_sources = RetrievalQAWithSourcesChain.from_chain_type(  
+                llm=llm,  
+                chain_type="stuff",  
+                retriever=vectorstore.as_retriever()  
+            )
+
+            response = qa_with_sources(prompt)
+            responsestream = st.write(response.get('answer'))
+          st.session_state.messages.append({"role": "assistant", "content": response.get('answer')})
+            # st.experimental_rerun()
+  # ------- End Chat Ui
+##########################
 
 def setupEnvironment():
   # configure client  
-  
+  global vectorstore 
+  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY)
 
   spec = ServerlessSpec(cloud='aws', region='us-east-1')  
   # check for and delete index if already exists  
@@ -45,44 +108,42 @@ def setupEnvironment():
   
   index = pc.Index(index_name)  
   
-  global vectorstore 
-  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY)
-  
   return index.describe_index_stats() 
 
 
 def vectorizeFile(up_files):
 
   # path to an example text file
+  with leftCol:
+    with st.spinner("Indexing documents... this might take a while⏳"):
+      with tempfile.TemporaryDirectory() as tmpdir:
+        for uploaded_file in up_files:
+            file_name = uploaded_file.name
+            file_content = uploaded_file.read()
+            st.write("Filename: ", file_name)
+            with open(os.path.join(tmpdir, file_name), "wb") as file:
+                file.write(file_content)
+                
+        loader = DirectoryLoader(tmpdir, glob="**/*.pdf", loader_cls=PyMuPDFLoader) 
+        documents = loader.load()
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+        docs = text_splitter.split_documents(documents)
 
-  with st.spinner("Indexing documents... this might take a while⏳"):
-    with tempfile.TemporaryDirectory() as tmpdir:
-      for uploaded_file in up_files:
-          file_name = uploaded_file.name
-          file_content = uploaded_file.read()
-          st.write("Filename: ", file_name)
-          with open(os.path.join(tmpdir, file_name), "wb") as file:
-              file.write(file_content)
-              
-      loader = DirectoryLoader(tmpdir, glob="**/*.pdf", loader_cls=PyMuPDFLoader) 
-      documents = loader.load()
-      text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-      docs = text_splitter.split_documents(documents)
-
-      if index_name in pc.list_indexes().names(): 
-        vectorstore.add_documents(docs)
-      else:
-        vectorstore_from_docs = PineconeVectorStore.from_documents(
-            docs,
-            index_name=index_name,
-            embedding=embeddings
-        )
-      st.success("Ingested File! ")
+        if index_name in pc.list_indexes().names(): 
+          vectorstore.add_documents(docs)
+        else:
+          vectorstore_from_docs = PineconeVectorStore.from_documents(
+              docs,
+              index_name=index_name,
+              embedding=embeddings
+          )
+        st.success("Ingested File! ")
     
 
 def render_header():
-   st.title('GOLD AI')
-   st.markdown(("### LLM Assisted Custom Knowledgebase "+
+  with leftCol:
+    st.title('GOLD AI')
+    st.markdown(("### LLM Assisted Custom Knowledgebase "+
                         "\n\n"+
                         "GOLD AI is a Python application that allows you to upload a PDF as vector embedding to pinecone"+
                         "\n\n"+
@@ -98,6 +159,8 @@ def clear_submit():
     st.session_state["submit"] = False   
 
 def upload_files():
+  
+  with leftCol:
     uploaded_files = st.file_uploader(
         "Upload multiple files",
         type="pdf",
@@ -123,11 +186,14 @@ if __name__ == '__main__':
           st.rerun()
       elif password:
           st.error("The password you entered is incorrect. Please try again.")
-      
+  
+  
   if st.session_state.login_successful:
     render_header()
     
     setupEnvironment()
+    
+    showChatUi()
     
     uploaded_files = upload_files()
     

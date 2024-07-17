@@ -8,7 +8,7 @@ from langchain_community.document_loaders import TextLoader, PyMuPDFLoader, Dire
 from langchain_text_splitters import CharacterTextSplitter
 from pinecone import ServerlessSpec, PodSpec
 from streamlit import session_state
-from langchain_openai import ChatOpenAI  
+from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA , RetrievalQAWithSourcesChain
 import time 
 
@@ -26,7 +26,7 @@ vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, p
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
 
-query = "please give me answer from given text. what would be the story of Jennie? "
+query = f"how to win Olympics?"
 qu = vectorstore.similarity_search(query, k=1)
 
 llm = ChatOpenAI(  
