@@ -46,7 +46,7 @@ def setupEnvironment():
   index = pc.Index(index_name)  
   
   global vectorstore 
-  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
+  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY)
   
   return index.describe_index_stats() 
 
