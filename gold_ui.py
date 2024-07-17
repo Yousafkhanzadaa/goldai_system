@@ -7,18 +7,21 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import TextLoader, PyMuPDFLoader, DirectoryLoader
 from langchain_text_splitters import CharacterTextSplitter
 from pinecone import ServerlessSpec, PodSpec
+from streamlit import session_state
 import time 
 
 
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-PINECONE_ENVIRONMENT = os.getenv('PINECONE_ENVIRONMENT')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+PINECONE_API_KEY = st.secrets['PINECONE_API_KEY']
+PINECONE_ENVIRONMENT = st.secrets['PINECONE_ENVIRONMENT']
+OPENAI_API_KEY = st.secrets['OPENAI_API_KEY']
+correct_password = st.secrets['PASSWORD']
 
 index_name = "goldragai"
 embeddings = OpenAIEmbeddings(model='text-embedding-3-small', openai_api_key=PINECONE_API_KEY)
 use_serverless = True 
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
+
 
 
 def setupEnvironment():
@@ -108,6 +111,20 @@ def upload_files():
     return uploaded_files
    
 if __name__ == '__main__':
+  if 'login_successful' not in st.session_state:
+    st.session_state.login_successful = False
+
+  if not st.session_state.login_successful:
+      password = st.text_input("Enter a password",
+                              help="Please enter your password; it's case sensitive",
+                              type="password")
+      if password == correct_password:
+          st.session_state.login_successful = True
+          st.rerun()
+      elif password:
+          st.error("The password you entered is incorrect. Please try again.")
+      
+  if st.session_state.login_successful:
     render_header()
     
     setupEnvironment()
