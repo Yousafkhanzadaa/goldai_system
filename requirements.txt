@@ -5,3 +5,6 @@ langchain_community
 langchain_text_splitters
 pinecone
 streamlit
+googleapis-common-protos
+protoc-gen-openapiv2 
+grpcio 
