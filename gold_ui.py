@@ -178,6 +178,11 @@ if __name__ == '__main__':
     st.session_state.login_successful = False
 
   if not st.session_state.login_successful:
+      username = st.text_input("User Name",
+                              placeholder="Gold Ai",
+                              value="Gold AI",
+                              disabled=True,
+                              type="default")
       password = st.text_input("Enter a password",
                               help="Please enter your password; it's case sensitive",
                               type="password")
