@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import tempfile
+import shutil
 from langchain_pinecone import PineconeVectorStore
 from pinecone.grpc import PineconeGRPC as Pinecone
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -69,7 +70,7 @@ def showChatUi():
             # st.write(qu[0].page_content)
             llm = ChatOpenAI(  
                 openai_api_key=OPENAI_API_KEY,  
-                model_name='gpt-3.5-turbo',  
+                model_name='gpt-4o-mini',  
                 temperature=0.5  
             ) 
 
@@ -87,9 +88,6 @@ def showChatUi():
 ##########################
 
 def setupEnvironment():
-  # configure client  
-  global vectorstore 
-  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY)
 
   spec = ServerlessSpec(cloud='aws', region='us-east-1')  
   # check for and delete index if already exists  
@@ -101,7 +99,12 @@ def setupEnvironment():
           dimension=1536,  # dimensionality of text-embedding-ada-002  
           metric='cosine',  
           spec=spec  
-      )  
+      )
+  
+  
+  # configure client  
+  global vectorstore 
+  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY)
   # wait for index to be initialized  
   while not pc.describe_index(index_name).status['ready']:  
       time.sleep(1)
@@ -121,8 +124,8 @@ def vectorizeFile(up_files):
         file_name = uploaded_file.name
   
         # Check if file_name is in processed_files
-        if file_name in processed_files:
-          st.write(f"{file_name} has already been processed.")
+        if file_name in st.session_state.processed_files:
+          st.error(f"{file_name} has already been processed.")
           continue
 
         # Process uploaded_file here
@@ -133,13 +136,13 @@ def vectorizeFile(up_files):
               
           loader = DirectoryLoader(tmpdir, glob="**/*.pdf", loader_cls=PyMuPDFLoader) 
           documents = loader.load()
-          text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+          text_splitter = CharacterTextSplitter(chunk_size=2000, chunk_overlap=0)
           docs = text_splitter.split_documents(documents)
 
           if index_name in pc.list_indexes().names(): 
             vectorstore.add_documents(docs)
             st.success(f"Ingested File: {file_name}!")
-            processed_files[file_name] = True
+            st.session_state.processed_files.append(file_name)
           else:
             st.error("Index does not exist. Please create the index before adding documents.") 
         
@@ -189,18 +192,22 @@ def render_header():
                     ))
    
 def clear_submit():
-    st.session_state["submit"] = False   
+    st.session_state["submit"] = False
 
 def upload_files():
-  
+    
   with leftCol:
     uploaded_files = st.file_uploader(
         "Upload multiple files",
         type="pdf",
         help="docs, and txt files are still in beta.",
         accept_multiple_files=True,
+        key=st.session_state.uploader_key,
         on_change=clear_submit
     )
+    
+    for file in st.session_state.processed_files:
+      st.success(f"Processed File: {file}")
     
     if uploaded_files is None:
         st.info("Please upload a file of type: " + ", ".join(["pdf"]))
@@ -209,6 +216,12 @@ def upload_files():
 if __name__ == '__main__':
   if 'login_successful' not in st.session_state:
     st.session_state.login_successful = False
+    
+  if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
+    
+  if "processed_files" not in st.session_state:
+    st.session_state.processed_files = []
 
   if not st.session_state.login_successful:
       username = st.text_input("User Name",
@@ -237,3 +250,4 @@ if __name__ == '__main__':
     
     if uploaded_files:
       vectorizeFile(uploaded_files)
+      st.session_state.uploader_key += 1
