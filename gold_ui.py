@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 import tempfile
-import shutil
 from langchain_pinecone import PineconeVectorStore
 from pinecone.grpc import PineconeGRPC as Pinecone
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -104,7 +103,7 @@ def setupEnvironment():
   
   # configure client  
   global vectorstore 
-  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY)
+  vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings, pinecone_api_key=PINECONE_API_KEY, namespace="np-gold1")
   # wait for index to be initialized  
   while not pc.describe_index(index_name).status['ready']:  
       time.sleep(1)
