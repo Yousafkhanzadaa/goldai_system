@@ -19,7 +19,7 @@ PINECONE_ENVIRONMENT = st.secrets['PINECONE_ENVIRONMENT']
 OPENAI_API_KEY = st.secrets['OPENAI_API_KEY']
 correct_password = st.secrets['PASSWORD']
 
-index_name = "goldragai"
+index_name = "gold-internal-data"
 embeddings = OpenAIEmbeddings(model='text-embedding-3-small', openai_api_key=OPENAI_API_KEY)
 use_serverless = True 
 
